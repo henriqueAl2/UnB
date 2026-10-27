@@ -1,0 +1,50 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+-- Interface do circuito (Entidade)
+entity XREGS is
+    generic (
+        WSIZE : natural := 32
+    );
+    port (
+        clk, wren  : in std_logic;
+        rs1, rs2, rd : in std_logic_vector(4 downto 0);
+        data       : in std_logic_vector(WSIZE-1 downto 0);
+        ro1, ro2   : out std_logic_vector(WSIZE-1 downto 0)
+    );
+end XREGS;
+
+-- Arquitetura (Comportamento Interno)
+architecture behavioral of XREGS is
+
+    -- Declaração do tipo de dados para representar a memória de 32 palavras
+    type reg_array is array (0 to 31) of std_logic_vector(WSIZE-1 downto 0);
+    
+    -- Sinal interno representando o vetor de registradores (iniciado com zeros)
+    signal registers : reg_array := (others => (others => '0'));
+
+begin
+
+    ------------------------------------------------------------------
+    -- Escrita Síncrona (Acontece na borda de subida do relógio)
+    ------------------------------------------------------------------
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            -- Só grava se a escrita estiver habilitada (wren = '1') 
+            -- e o destino NÃO for o registrador zero (rd /= "00000")
+            if wren = '1' and unsigned(rd) /= 0 then
+                registers(to_integer(unsigned(rd))) <= data;
+            end if;
+        end if;
+    end process;
+
+    ------------------------------------------------------------------
+    -- Leitura Assíncrona (Acesso imediato sem depender de clock)
+    ------------------------------------------------------------------
+    -- x0 é uma constante mantida sempre em zero (opção usada: leitura condicional)
+    ro1 <= (others => '0') when unsigned(rs1) = 0 else registers(to_integer(unsigned(rs1)));
+    ro2 <= (others => '0') when unsigned(rs2) = 0 else registers(to_integer(unsigned(rs2)));
+
+end behavioral;
